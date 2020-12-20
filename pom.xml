@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.github.franckyi</groupId>
+    <artifactId>mini-metro-map-creator</artifactId>
+    <version>0.0.1</version>
+
+    <properties>
+        <main-class>com.github.franckyi.mmmc.MapCreatorApp</main-class>
+        <!-- This should be the . version of the artifactId -->
+        <java-mod-name>mmmc</java-mod-name>
+
+        <javafx-mods-version>javafx-jmods-11.0.2</javafx-mods-version>
+        <javafx-libs-version>javafx-sdk-11.0.2</javafx-libs-version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <!-- This project uses the https://github.com/wiverson/jtoolprovider-plugin to invoke jdeps and jpackage -->
+        <jtoolprovider.version>1.0.23</jtoolprovider.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>no.tornado</groupId>
+            <artifactId>tornadofx</artifactId>
+            <version>1.7.20</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>11.0.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.9.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-project-info-reports-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>3.1.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.github.wiverson</groupId>
+                    <artifactId>jtoolprovider-plugin</artifactId>
+                    <version>${jtoolprovider.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.0.0-M1</version>
+                <!-- This is an app, so we don't want to install it in the local Maven repository -->
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <release>${maven.compiler.target}</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.4</version>
+                <configuration>
+                    <mainClass>com.github.franckyi.mmmc.MapCreatorApp</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <configuration>
+                    <finalName>${project.artifactId}</finalName>
+                    <!-- Use this section to filter out items by artifactId from the shaded jar. Here we are excluding
+                    the JavaFX SDK - those will be added in as platform-specific libraries later.  You would do something
+                     similar for other artifacts that would be supplied as modules. -->
+                    <artifactSet>
+                        <excludes>
+                            <exclude>org.openjfx:javafx-base</exclude>
+                            <exclude>org.openjfx:javafx-controls</exclude>
+                            <exclude>org.openjfx:javafx-fxml</exclude>
+                            <exclude>org.openjfx:javafx-graphics</exclude>
+                            <exclude>org.openjfx:javafx-media</exclude>
+                            <exclude>org.openjfx:javafx-swing</exclude>
+                            <exclude>org.openjfx:javafx-web</exclude>
+                        </excludes>
+                    </artifactSet>
+                    <!-- Use this section to filter out items by file name from the shaded jar. Here we are excluding
+                    any module information and manifest data from the shaded jar - they would be incorrect and/or
+                    duplicates given our shaded jar strategy. -->
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>**/module-info.java</exclude>
+                                <exclude>**/module-info.class</exclude>
+                                <exclude>module-info.java</exclude>
+                                <exclude>module-info.class</exclude>
+                                <exclude>META-INF/*.MF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                    <outputDirectory>${project.build.directory}/shaded-jar/</outputDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.0.0</version>
+                <!-- We use the Ant task here to unzip the shaded jar to make jdeps have a new directory to work with -->
+                <executions>
+                    <execution>
+                        <id>prepare</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <target>
+                                <unzip src="target/shaded-jar/${project.artifactId}.jar"
+                                       dest="target/unpacked-shade/"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.github.wiverson</groupId>
+                <artifactId>jtoolprovider-plugin</artifactId>
+                <version>${jtoolprovider.version}</version>
+                <!-- We use the jdeps tool here on the exploded directory to automatically generate a module-info.java
+                file for the entire shaded jar. You'll notice that we are explicitly passing in the JavaFX modules here -
+                you may want to tweak this as you use (or don't use) different modules. The smaller the set of modules,
+                the smaller the final app will be.
+                -->
+                <executions>
+                    <execution>
+                        <id>jdeps</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>java-tool</goal>
+                        </goals>
+                        <configuration>
+                            <toolName>jdeps</toolName>
+                            <args>
+                                <arg>--module-path</arg>
+                                <arg>${project.basedir}/${javafx-libs-version}/lib/</arg>
+                                <arg>--add-modules</arg>
+                                <arg>javafx.base,javafx.controls,javafx.graphics,java.logging</arg>
+                                <arg>--generate-module-info</arg>
+                                <arg>${project.build.directory}/work</arg>
+                                <arg>${project.build.directory}/shaded-jar/${project.artifactId}.jar</arg>
+                            </args>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- This plugin compiles and attaches the generated module-info back to the shaded jar -
+                now we have everything we need to start generating an installer! -->
+                <groupId>org.moditect</groupId>
+                <artifactId>moditect-maven-plugin</artifactId>
+                <version>1.0.0.RC1</version>
+                <executions>
+                    <execution>
+                        <id>add-module-infos</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>add-module-info</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/modules</outputDirectory>
+                            <overwriteExistingFiles>true</overwriteExistingFiles>
+                            <modules>
+                                <module>
+                                    <file>${project.build.directory}/shaded-jar/${project.artifactId}.jar</file>
+                                    <moduleInfoFile>${project.build.directory}/work/${java-mod-name}/module-info.java
+                                    </moduleInfoFile>
+                                </module>
+                            </modules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>add-jlink-package</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.github.wiverson</groupId>
+                        <artifactId>jtoolprovider-plugin</artifactId>
+                        <version>${jtoolprovider.version}</version>
+                        <!-- jlink here generates an image and launcher for your app, but does not wrap it
+                        with an installer (like jpackage). This execution is not run by default - if you are using
+                        jpackage, it's calling jlink for you anyways, so this would just make the build slower.
+                        It's bound to the verify goal to make sure all of the other plugins run first instead.
+                        From a purist, it would probably make more sense to bind this to install (like jpackage is),
+                        but by putting this on verify it means that you can quickly flip back and forth between
+                        jlink builds (in IntelliJ) and jpackage builds (via command-line Maven runner).
+                        -->
+                        <executions>
+                            <execution>
+                                <id>jlink</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>java-tool</goal>
+                                </goals>
+                                <configuration>
+                                    <toolName>jlink</toolName>
+                                    <args>
+                                        <!--                                        <arg>&#45;&#45;strip-native-commands</arg>-->
+                                        <arg>--strip-debug</arg>
+                                        <arg>--no-header-files</arg>
+                                        <arg>--no-man-pages</arg>
+                                        <arg>--compress=2</arg>
+                                        <arg>--module-path</arg>
+                                        <arg>
+                                            ${java.home}/jmods/:${project.build.directory}/modules/:${project.basedir}/${javafx-mods-version}/
+                                        </arg>
+                                        <arg>--add-modules</arg>
+                                        <arg>${java-mod-name},javafx.base,javafx.controls,javafx.graphics,java.logging
+                                        </arg>
+                                        <arg>--launcher</arg>
+                                        <arg>${project.artifactId}=${java-mod-name}/${main-class}</arg>
+                                        <arg>--output</arg>
+                                        <arg>${project.build.directory}/jlink-image</arg>
+                                    </args>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- We use the built-in Maven profile activation system to automatically bind either the macOS or Windows
+         profile to the install phase.  The configuration options for jpackage are wildly platform specific. These
+         are workable minimal options - depending on your application, you may wish to custom further.
+         -->
+        <profile>
+            <id>build-mac-installer</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.github.wiverson</groupId>
+                        <artifactId>jtoolprovider-plugin</artifactId>
+                        <version>${jtoolprovider.version}</version>
+                        <executions>
+                            <execution>
+                                <id>jpackage-mac-installer</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>java-tool</goal>
+                                </goals>
+                                <configuration>
+                                    <toolName>jpackage</toolName>
+                                    <args>
+                                        <arg>--jlink-options</arg>
+                                        <arg>--strip-native-commands --strip-debug --no-header-files --no-man-pages
+                                            --compress=2
+                                        </arg>
+                                        <arg>--name</arg>
+                                        <arg>TestApp</arg>
+                                        <arg>--icon</arg>
+                                        <arg>${project.basedir}/app-icon.icns</arg>
+                                        <arg>--module-path</arg>
+                                        <arg>
+                                            ${java.home}/jmods/:${project.build.directory}/modules/:${project.basedir}/${javafx-mods-version}/
+                                        </arg>
+                                        <arg>--add-modules</arg>
+                                        <arg>${java-mod-name},javafx.base,javafx.controls,javafx.graphics,java.logging
+                                        </arg>
+                                        <arg>-m</arg>
+                                        <arg>${java-mod-name}/${main-class}</arg>
+                                        <arg>--dest</arg>
+                                        <arg>${project.build.directory}</arg>
+                                    </args>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>build-win-installer</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.github.wiverson</groupId>
+                        <artifactId>jtoolprovider-plugin</artifactId>
+                        <version>${jtoolprovider.version}</version>
+                        <executions>
+                            <execution>
+                                <id>jpackage-win-installer</id>
+                                <phase>install</phase>
+                                <goals>
+                                    <goal>java-tool</goal>
+                                </goals>
+                                <configuration>
+                                    <toolName>jpackage</toolName>
+                                    <args>
+                                        <arg>--jlink-options</arg>
+                                        <arg>--strip-native-commands --strip-debug --no-header-files --no-man-pages
+                                            --compress=2
+                                        </arg>
+                                        <arg>--name</arg>
+                                        <arg>TestApp</arg>
+                                        <arg>--win-menu</arg>
+                                        <arg>--win-menu-group</arg>
+                                        <arg>Sample</arg>
+                                        <arg>--icon</arg>
+                                        <arg>${project.basedir}\app-icon.ico</arg>
+                                        <arg>--module-path</arg>
+                                        <arg>
+                                            ${java.home}\jmods\;${project.build.directory}\modules\;${project.basedir}\${javafx-mods-version}/
+                                        </arg>
+                                        <arg>--add-modules</arg>
+                                        <arg>${java-mod-name},javafx.base,javafx.controls,javafx.graphics,java.logging
+                                        </arg>
+                                        <arg>-m</arg>
+                                        <arg>${java-mod-name}/${main-class}</arg>
+                                        <arg>--dest</arg>
+                                        <arg>${project.build.directory}</arg>
+                                    </args>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
