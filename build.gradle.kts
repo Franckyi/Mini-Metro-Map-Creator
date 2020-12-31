@@ -48,13 +48,31 @@ jlink {
 
     jpackage {
         installerOptions = mutableListOf(
-            "--description", "A map creation tool for Mini Metro",
-            "--win-per-user-install", "--win-dir-chooser",
-            "--win-menu", "--win-shortcut",
-            "--linux-menu-group", "Games",
-            "--linux-shortcut",
-            "--linux-deb-maintainer", "franck.velasco@hotmail.com",
-            "--linux-rpm-license-type", "MIT"
+            "--description", "A map creation tool for Mini Metro"
         )
+        val osName = System.getProperty("os.name").toLowerCase()
+        when {
+            osName.startsWith("win") -> {
+                installerOptions.addAll(
+                    listOf(
+                        "--win-per-user-install", "--win-dir-chooser",
+                        "--win-menu", "--win-shortcut"
+                    )
+                )
+            }
+            osName.startsWith("mac") -> {
+            }
+            else -> {
+                installerOptions.addAll(
+                    listOf(
+                        "--linux-menu-group", "Games",
+                        "--linux-shortcut",
+                        "--linux-deb-maintainer", "franck.velasco@hotmail.com",
+                        "--linux-rpm-license-type", "MIT",
+                        "--linux-app-category", "games"
+                    )
+                )
+            }
+        }
     }
 }
